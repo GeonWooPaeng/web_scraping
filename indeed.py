@@ -3,7 +3,9 @@ from bs4 import BeautifulSoup #html에서 정보를 추출하기 위한 package
 
 LIMIT = 50
 URL = f"https://kr.indeed.com/%EC%B7%A8%EC%97%85?q=python&limit={LIMIT}"
-def extract_indeed_pages():
+
+
+def get_last_page():
 
   # 해당 url로 get 요청을 보냈다.
   result = requests.get(URL) 
@@ -25,15 +27,39 @@ def extract_indeed_pages():
   return max_page
 
 
-def extract_indeed_jobs(last_page):
+
+def extract_job(html):
+    title = html.find("h2", {"class": "title"}).find("a")["title"]
+    company = html.find("span",{"class": "company"})
+    company_anchor = company.find("a")
+    if company_anchor is not None:
+      company = str(company_anchor.string)
+    else:
+      company = str(company.string)
+    company = company.strip()
+    location  = html.find("span",{"class":"location"}).string
+    job_id = html["data-jk"] #한국 indeed에는 없습니다.
+  
+    return {'title': title, 'company': company, 'location': location, "link":f"https://kr.indeed.com/viewjob?jk={job_id}"}
+
+
+
+
+def extract_jobs(last_page):
 # 각 일자리 정보를 가져오고 일자리를 return한다
   jobs = []
-  # for page in range(last_page):
-  result = requests.get(f"{URL}&start={0*LIMIT}")
-  soup = BeautifulSoup(result.text, "html.parser")
-  results = soup.find_all("div",{"class": "jobsearch-SerpJobCard"})
-  for result in results:
-      title = result.find("h2", {"class": "title"}).find("a")["title"]
-      print(title)
+  for page in range(last_page):
+    print(f"Scrapping page {page}")
+    result = requests.get(f"{URL}&start={0*LIMIT}")
+    soup = BeautifulSoup(result.text, "html.parser")
+    results = soup.find_all("div",{"class": "jobsearch-SerpJobCard"})
+    for result in results:
+      job = extract_job(result)
+      jobs.append(job)    
+  return jobs
 
+
+def get_jobs():
+  last_page = get_last_page() 
+  jobs = extract_jobs(last_page)
   return jobs
